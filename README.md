@@ -224,34 +224,10 @@ dompetku/
 
 Aplikasi menyediakan fitur "Muat Data Contoh" di halaman Pengaturan untuk mencoba aplikasi dengan data demo yang sudah terisi.
 
-## 🐛 Troubleshooting
-
-### Build Error
-Jika terjadi error saat build, pastikan:
-- Node.js versi 18 atau lebih baru
-- Semua dependencies sudah terinstall dengan benar
-- Tidak ada typo di path import
-
-### Data Hilang
-- Pastikan tidak membersihkan localStorage browser
-- Lakukan export data secara berkala untuk backup
-- Import kembali data dari file backup JSON
-
 ## 📄 License
 
 Proyek ini dibuat untuk keperluan pembelajaran dan portfolio.
 
-## 👨‍💻 Pengembangan
-
-Aplikasi ini dibuat dengan fokus pada:
-- Clean code dan best practices
-- Type safety dengan TypeScript
-- Component reusability
-- State management yang terstruktur
-- User experience yang intuitif
-
 ---
 
 **Selamat mencatat keuangan! 💰**
-#   D o m p e t k u  
- 
