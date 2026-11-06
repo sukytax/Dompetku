@@ -10,8 +10,6 @@ Aplikasi menggunakan **Firebase Authentication** untuk:
 - ✅ Data sync antar device (cloud-based)
 - ✅ Secure & scalable
 
-**📖 Setup Guide:** Lihat [FIREBASE_SETUP.md](FIREBASE_SETUP.md) untuk panduan lengkap setup Firebase dan deployment ke Vercel.
-
 ## ✨ Fitur Utama
 
 ### 📊 Dashboard
@@ -96,13 +94,6 @@ npm run build
 ```
 
 File hasil build akan tersimpan di folder `dist/`.
-
-### Deployment ke Vercel
-
-Ikuti panduan lengkap di [FIREBASE_SETUP.md](FIREBASE_SETUP.md) untuk:
-- Setup Firebase project
-- Push ke GitHub
-- Deploy ke Vercel dengan environment variables
 
 ### Preview Production Build
 
@@ -202,7 +193,6 @@ dompetku/
 - ✅ Data private per user
 - ✅ Tidak perlu server backend sendiri
 - ✅ Gratis untuk personal use (Firebase free tier)
-- ⚠️ Data lokal bisa hilang jika clear browser (gunakan Export untuk backup)
 
 **💡 Tip:** Gunakan fitur Export di Settings untuk backup data secara regular
 
@@ -263,3 +253,5 @@ Aplikasi ini dibuat dengan fokus pada:
 ---
 
 **Selamat mencatat keuangan! 💰**
+#   D o m p e t k u  
+ 
