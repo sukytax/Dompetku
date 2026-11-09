@@ -4,21 +4,47 @@ import type { Budget } from '@/types'
 import { generateId } from '@/utils/export'
 import { useTransactionsStore } from './transactions'
 import { toMonthString } from '@/utils/date'
+import { saveUserDataToCloud, loadUserDataFromCloud } from '@/services/firestoreSync'
 
 export const useBudgetsStore = defineStore('budgets', () => {
   const budgets = ref<Budget[]>([])
+  const isLoaded = ref(false)
 
   // Load dari localStorage
   function loadBudgets() {
     const saved = localStorage.getItem('dompetku-budgets')
     if (saved) {
-      budgets.value = JSON.parse(saved)
+      try {
+        budgets.value = JSON.parse(saved)
+      } catch {
+        budgets.value = []
+      }
     }
   }
 
-  // Simpan ke localStorage
+  // Simpan ke localStorage & sinkronkan ke cloud
   function saveBudgets() {
     localStorage.setItem('dompetku-budgets', JSON.stringify(budgets.value))
+    saveUserDataToCloud('budgets', budgets.value)
+  }
+
+  // Sinkronisasi dengan Firestore
+  async function syncWithCloud(userId?: string) {
+    const remote = await loadUserDataFromCloud<Budget>('budgets', userId)
+    if (remote !== null) {
+      budgets.value = remote
+      localStorage.setItem('dompetku-budgets', JSON.stringify(remote))
+    } else if (budgets.value.length > 0) {
+      saveUserDataToCloud('budgets', budgets.value, userId, true)
+    }
+    isLoaded.value = true
+  }
+
+  // Reset data di memori dan sesi lokal
+  function reset() {
+    budgets.value = []
+    isLoaded.value = false
+    localStorage.removeItem('dompetku-budgets')
   }
 
   // CRUD
@@ -115,6 +141,7 @@ export const useBudgetsStore = defineStore('budgets', () => {
 
   return {
     budgets,
+    isLoaded,
     currentMonthBudgets,
     setBudget,
     deleteBudget,
@@ -123,6 +150,8 @@ export const useBudgetsStore = defineStore('budgets', () => {
     getBudgetProgress,
     getMonthBudgets,
     loadBudgets,
-    saveBudgets
+    saveBudgets,
+    syncWithCloud,
+    reset
   }
 })

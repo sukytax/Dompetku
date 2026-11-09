@@ -10,6 +10,7 @@ import { useGoalsStore } from '@/stores/goals'
 import { useBudgetsStore } from '@/stores/budgets'
 import { exportToJSON, exportTransactionsToCSV, importFromJSON } from '@/utils/export'
 import { useToast } from '@/composables/useToast'
+import { clearUserDataFromCloud } from '@/services/firestoreSync'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -69,7 +70,7 @@ async function handleFileSelect(event: Event) {
     
     if (confirm('Import data akan mengganti semua data yang ada. Lanjutkan?')) {
       // Clear existing data
-      localStorage.clear()
+      authStore.resetAllStores()
       
       // Import new data
       walletsStore.wallets.length = 0
@@ -103,10 +104,11 @@ async function handleFileSelect(event: Event) {
   target.value = ''
 }
 
-function handleDeleteAll() {
+async function handleDeleteAll() {
   if (confirm('Yakin ingin menghapus SEMUA data? Tindakan ini tidak dapat dibatalkan!')) {
     if (confirm('Konfirmasi sekali lagi: Hapus semua data?')) {
-      localStorage.clear()
+      await clearUserDataFromCloud()
+      authStore.resetAllStores()
       toast.success('Semua data berhasil dihapus')
       setTimeout(() => window.location.reload(), 1000)
     }
@@ -121,8 +123,8 @@ function handleLoadSampleData() {
   }
 
   try {
-    // Clear existing data
-    localStorage.clear()
+    // Clear existing stores
+    authStore.resetAllStores()
     
     // Load categories (already have defaults)
     categoriesStore.loadCategories()
@@ -274,7 +276,7 @@ function handleLoadSampleData() {
 }
 
 async function handleLogout() {
-  if (confirm('Yakin ingin keluar? Data yang belum disinkronkan akan hilang.')) {
+  if (confirm('Yakin ingin keluar dari akun Anda?')) {
     await authStore.logout()
     router.push('/login')
   }

@@ -2,9 +2,11 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Category } from '@/types'
 import { generateId } from '@/utils/export'
+import { saveUserDataToCloud, loadUserDataFromCloud } from '@/services/firestoreSync'
 
 export const useCategoriesStore = defineStore('categories', () => {
   const categories = ref<Category[]>([])
+  const isLoaded = ref(false)
 
   // Kategori default
   const defaultCategories: Omit<Category, 'id'>[] = [
@@ -29,7 +31,11 @@ export const useCategoriesStore = defineStore('categories', () => {
   function loadCategories() {
     const saved = localStorage.getItem('dompetku-categories')
     if (saved) {
-      categories.value = JSON.parse(saved)
+      try {
+        categories.value = JSON.parse(saved)
+      } catch {
+        categories.value = []
+      }
     } else {
       // Init dengan kategori default
       categories.value = defaultCategories.map(cat => ({
@@ -40,9 +46,32 @@ export const useCategoriesStore = defineStore('categories', () => {
     }
   }
 
-  // Simpan ke localStorage
+  // Simpan ke localStorage & sinkronkan ke cloud
   function saveCategories() {
     localStorage.setItem('dompetku-categories', JSON.stringify(categories.value))
+    saveUserDataToCloud('categories', categories.value)
+  }
+
+  // Sinkronisasi dengan Firestore
+  async function syncWithCloud(userId?: string) {
+    const remote = await loadUserDataFromCloud<Category>('categories', userId)
+    if (remote !== null && remote.length > 0) {
+      categories.value = remote
+      localStorage.setItem('dompetku-categories', JSON.stringify(remote))
+    } else {
+      if (categories.value.length === 0) {
+        categories.value = defaultCategories.map(cat => ({ ...cat, id: generateId() }))
+      }
+      saveUserDataToCloud('categories', categories.value, userId, true)
+    }
+    isLoaded.value = true
+  }
+
+  // Reset data di memori dan sesi lokal
+  function reset() {
+    categories.value = []
+    isLoaded.value = false
+    localStorage.removeItem('dompetku-categories')
   }
 
   // Computed
@@ -90,6 +119,7 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   return {
     categories,
+    isLoaded,
     expenseCategories,
     incomeCategories,
     addCategory,
@@ -97,6 +127,8 @@ export const useCategoriesStore = defineStore('categories', () => {
     deleteCategory,
     getCategoryById,
     loadCategories,
-    saveCategories
+    saveCategories,
+    syncWithCloud,
+    reset
   }
 })

@@ -3,21 +3,47 @@ import { ref, computed } from 'vue'
 import type { Goal } from '@/types'
 import { generateId } from '@/utils/export'
 import { useTransactionsStore } from './transactions'
+import { saveUserDataToCloud, loadUserDataFromCloud } from '@/services/firestoreSync'
 
 export const useGoalsStore = defineStore('goals', () => {
   const goals = ref<Goal[]>([])
+  const isLoaded = ref(false)
 
   // Load dari localStorage
   function loadGoals() {
     const saved = localStorage.getItem('dompetku-goals')
     if (saved) {
-      goals.value = JSON.parse(saved)
+      try {
+        goals.value = JSON.parse(saved)
+      } catch {
+        goals.value = []
+      }
     }
   }
 
-  // Simpan ke localStorage
+  // Simpan ke localStorage & sinkronkan ke cloud
   function saveGoals() {
     localStorage.setItem('dompetku-goals', JSON.stringify(goals.value))
+    saveUserDataToCloud('goals', goals.value)
+  }
+
+  // Sinkronisasi dengan Firestore
+  async function syncWithCloud(userId?: string) {
+    const remote = await loadUserDataFromCloud<Goal>('goals', userId)
+    if (remote !== null) {
+      goals.value = remote
+      localStorage.setItem('dompetku-goals', JSON.stringify(remote))
+    } else if (goals.value.length > 0) {
+      saveUserDataToCloud('goals', goals.value, userId, true)
+    }
+    isLoaded.value = true
+  }
+
+  // Reset data di memori dan sesi lokal
+  function reset() {
+    goals.value = []
+    isLoaded.value = false
+    localStorage.removeItem('dompetku-goals')
   }
 
   // Hitung total tabungan goal dari transaksi
@@ -145,6 +171,7 @@ export const useGoalsStore = defineStore('goals', () => {
 
   return {
     goals,
+    isLoaded,
     activeGoals,
     completedGoals,
     archivedGoals,
@@ -157,6 +184,8 @@ export const useGoalsStore = defineStore('goals', () => {
     checkGoalCompletion,
     getGoalHistory,
     loadGoals,
-    saveGoals
+    saveGoals,
+    syncWithCloud,
+    reset
   }
 })

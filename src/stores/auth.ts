@@ -9,11 +9,55 @@ import {
   updateProfile
 } from 'firebase/auth'
 import { auth, firebaseConfigured } from '@/firebase/config'
+import { useWalletsStore } from './wallets'
+import { useTransactionsStore } from './transactions'
+import { useGoalsStore } from './goals'
+import { useBudgetsStore } from './budgets'
+import { useCategoriesStore } from './categories'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const loading = ref(true)
   const error = ref<string | null>(null)
+  const isSyncing = ref(false)
+
+  // Sinkronisasi semua store dengan Firestore untuk pengguna saat ini
+  async function syncAllStores(userId: string) {
+    isSyncing.value = true
+    try {
+      const walletsStore = useWalletsStore()
+      const transactionsStore = useTransactionsStore()
+      const goalsStore = useGoalsStore()
+      const budgetsStore = useBudgetsStore()
+      const categoriesStore = useCategoriesStore()
+
+      await Promise.allSettled([
+        walletsStore.syncWithCloud(userId),
+        transactionsStore.syncWithCloud(userId),
+        goalsStore.syncWithCloud(userId),
+        budgetsStore.syncWithCloud(userId),
+        categoriesStore.syncWithCloud(userId)
+      ])
+    } finally {
+      isSyncing.value = false
+    }
+  }
+
+  // Reset state semua store di memori saat logout
+  function resetAllStores() {
+    useWalletsStore().reset()
+    useTransactionsStore().reset()
+    useGoalsStore().reset()
+    useBudgetsStore().reset()
+    useCategoriesStore().reset()
+
+    // Hapus sesi data tanpa menghapus preferensi tampilan/tema
+    localStorage.removeItem('dompetku-wallets')
+    localStorage.removeItem('dompetku-transactions')
+    localStorage.removeItem('dompetku-goals')
+    localStorage.removeItem('dompetku-budgets')
+    localStorage.removeItem('dompetku-categories')
+  }
 
   // Initialize auth state listener
   function initAuthListener() {
@@ -22,9 +66,13 @@ export const useAuthStore = defineStore('auth', () => {
       return
     }
 
-    onAuthStateChanged(auth, (firebaseUser) => {
+    onAuthStateChanged(auth, async (firebaseUser) => {
       user.value = firebaseUser
       loading.value = false
+
+      if (firebaseUser) {
+        await syncAllStores(firebaseUser.uid)
+      }
     })
   }
 
@@ -45,6 +93,7 @@ export const useAuthStore = defineStore('auth', () => {
       })
       
       user.value = userCredential.user
+      await syncAllStores(userCredential.user.uid)
       return { success: true }
     } catch (err: any) {
       error.value = getErrorMessage(err.code)
@@ -63,6 +112,7 @@ export const useAuthStore = defineStore('auth', () => {
       error.value = null
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       user.value = userCredential.user
+      await syncAllStores(userCredential.user.uid)
       return { success: true }
     } catch (err: any) {
       error.value = getErrorMessage(err.code)
@@ -74,16 +124,14 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout() {
     if (!auth) {
       user.value = null
+      resetAllStores()
       return { success: true }
     }
 
     try {
       await signOut(auth)
       user.value = null
-      
-      // Clear all local data
-      localStorage.clear()
-      
+      resetAllStores()
       return { success: true }
     } catch (err: any) {
       error.value = 'Gagal logout'
@@ -124,8 +172,11 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     loading,
     error,
+    isSyncing,
     register,
     login,
-    logout
+    logout,
+    syncAllStores,
+    resetAllStores
   }
 })

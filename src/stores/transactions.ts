@@ -4,21 +4,47 @@ import type { Transaction, TransactionType } from '@/types'
 import { generateId } from '@/utils/export'
 import { useWalletsStore } from './wallets'
 import { toMonthString } from '@/utils/date'
+import { saveUserDataToCloud, loadUserDataFromCloud } from '@/services/firestoreSync'
 
 export const useTransactionsStore = defineStore('transactions', () => {
   const transactions = ref<Transaction[]>([])
+  const isLoaded = ref(false)
 
   // Load dari localStorage
   function loadTransactions() {
     const saved = localStorage.getItem('dompetku-transactions')
     if (saved) {
-      transactions.value = JSON.parse(saved)
+      try {
+        transactions.value = JSON.parse(saved)
+      } catch {
+        transactions.value = []
+      }
     }
   }
 
-  // Simpan ke localStorage
+  // Simpan ke localStorage & sinkronkan ke cloud
   function saveTransactions() {
     localStorage.setItem('dompetku-transactions', JSON.stringify(transactions.value))
+    saveUserDataToCloud('transactions', transactions.value)
+  }
+
+  // Sinkronisasi dengan Firestore
+  async function syncWithCloud(userId?: string) {
+    const remote = await loadUserDataFromCloud<Transaction>('transactions', userId)
+    if (remote !== null) {
+      transactions.value = remote
+      localStorage.setItem('dompetku-transactions', JSON.stringify(remote))
+    } else if (transactions.value.length > 0) {
+      saveUserDataToCloud('transactions', transactions.value, userId, true)
+    }
+    isLoaded.value = true
+  }
+
+  // Reset data di memori dan sesi lokal
+  function reset() {
+    transactions.value = []
+    isLoaded.value = false
+    localStorage.removeItem('dompetku-transactions')
   }
 
   // Hitung saldo dompet berdasarkan transaksi
@@ -235,6 +261,7 @@ export const useTransactionsStore = defineStore('transactions', () => {
 
   return {
     transactions,
+    isLoaded,
     totalBalance,
     currentMonthStats,
     recentTransactions,
@@ -252,6 +279,8 @@ export const useTransactionsStore = defineStore('transactions', () => {
     getMonthlyStats,
     getGroupedTransactions,
     loadTransactions,
-    saveTransactions
+    saveTransactions,
+    syncWithCloud,
+    reset
   }
 })
