@@ -28,14 +28,14 @@ provide('toast', showToast)
     <Sidebar v-if="!isAuthPage" />
     
     <!-- Main Content -->
-    <main class="flex-1 pb-16 md:pb-0">
+    <main :class="['flex-1', !isAuthPage ? 'pb-16 md:pb-0' : '']">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" />
         </transition>
       </router-view>
 
-      <footer class="border-t border-gray-200 dark:border-gray-700 px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+      <footer v-if="!isAuthPage" class="border-t border-gray-200 dark:border-gray-700 px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
         Made By Bimo Bagas
       </footer>
     </main>
