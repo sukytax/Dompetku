@@ -68,7 +68,8 @@ export function exportTransactionsToCSV(
       case 'income': typeLabel = 'Pemasukan'; break
       case 'expense': typeLabel = 'Pengeluaran'; break
       case 'transfer': typeLabel = 'Transfer'; break
-      case 'saving': typeLabel = 'Tabungan'; break
+      case 'saving': typeLabel = 'Goals'; break
+      case 'withdrawal': typeLabel = 'Tarik Dana'; break
     }
     
     return [

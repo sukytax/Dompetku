@@ -232,7 +232,7 @@ function getTransactionLabel(tx: any) {
     return `Transfer ke ${toWallet?.name}`
   } else if (tx.type === 'saving') {
     const goal = goalsStore.getGoalById(tx.goalId!)
-    return `Tabungan ${goal?.name}`
+    return `Goal: ${goal?.name || ''}`
   } else if (tx.type === 'withdrawal') {
     const goal = goalsStore.getGoalById(tx.goalId!)
     return `Tarik Dana ${goal?.name}`
@@ -292,7 +292,7 @@ function clearFilters() {
             <option value="income">Pemasukan</option>
             <option value="expense">Pengeluaran</option>
             <option value="transfer">Transfer</option>
-            <option value="saving">Tabungan</option>
+            <option value="saving">Goals</option>
             <option value="withdrawal">Tarik Dana</option>
           </select>
 
@@ -432,7 +432,7 @@ function clearFilters() {
                   : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
               ]"
             >
-              Tabungan
+              Goals
             </button>
             <button
               type="button"
@@ -525,7 +525,7 @@ function clearFilters() {
         <!-- Goal (untuk saving dan withdrawal) -->
         <div v-if="form.type === 'saving' || form.type === 'withdrawal'">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {{ form.type === 'saving' ? 'Tujuan Tabungan' : 'Tarik Dana dari Goal' }} <span class="text-red-500">*</span>
+            {{ form.type === 'saving' ? 'Pilih Goal' : 'Tarik Dana dari Goal' }} <span class="text-red-500">*</span>
           </label>
           <select
             v-model="form.goalId"

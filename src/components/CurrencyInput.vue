@@ -19,8 +19,10 @@ const displayValue = ref('')
 // Format tampilan saat komponen dimuat
 watch(() => props.modelValue, (newValue) => {
   if (newValue > 0) {
-    displayValue.value = formatCurrencyInput(newValue.toString())
-  } else if (displayValue.value === '') {
+    if (parseCurrency(displayValue.value) !== newValue) {
+      displayValue.value = formatCurrencyInput(newValue.toString())
+    }
+  } else {
     displayValue.value = ''
   }
 }, { immediate: true })

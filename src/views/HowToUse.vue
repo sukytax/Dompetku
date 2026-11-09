@@ -27,11 +27,11 @@
       </section>
 
       <section class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
-        <h2 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">3. Mencatat Tabungan</h2>
+        <h2 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">3. Mencatat Transaksi Goals</h2>
         <p class="text-blue-800 dark:text-blue-200">
-          Apabila ingin memilih tipe <strong>Tabungan</strong>, buat atau pilih terlebih dahulu
-          <strong>Goals</strong> yang sesuai. Saat menambahkan transaksi Tabungan, pilih Goal tujuan
-          tersebut pada kolom <strong>Tujuan Tabungan</strong>. Dengan begitu, jumlah tabungan akan
+          Apabila ingin memilih tipe <strong>Goals</strong>, buat atau pilih terlebih dahulu
+          <strong>Goals</strong> yang sesuai. Saat menambahkan transaksi Goals, pilih Goal tujuan
+          tersebut pada kolom <strong>Pilih Goal</strong>. Dengan begitu, nominal akan
           tercatat pada Goal yang benar dan progres target dapat dipantau.
         </p>
       </section>

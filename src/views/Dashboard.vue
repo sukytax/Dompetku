@@ -106,7 +106,7 @@ function getTransactionLabel(tx: any) {
     return `Transfer: ${fromWallet?.name} → ${toWallet?.name}`
   } else if (tx.type === 'saving') {
     const goal = goalsStore.getGoalById(tx.goalId!)
-    return `Tabungan: ${goal?.name}`
+    return `Goal: ${goal?.name || ''}`
   } else if (tx.type === 'withdrawal') {
     const goal = goalsStore.getGoalById(tx.goalId!)
     return `Tarik Dana: ${goal?.name}`

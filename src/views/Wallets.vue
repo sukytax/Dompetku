@@ -6,6 +6,7 @@ import { formatCurrency } from '@/utils/currency'
 import { useToast } from '@/composables/useToast'
 import Modal from '@/components/Modal.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import CurrencyInput from '@/components/CurrencyInput.vue'
 
 const walletsStore = useWalletsStore()
 const transactionsStore = useTransactionsStore()
@@ -284,25 +285,12 @@ function getWalletBalance(walletId: string) {
         </div>
         
         <!-- Saldo Awal -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Saldo Awal
-          </label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">Rp</span>
-            <input
-              v-model.number="form.initialBalance"
-              type="number"
-              min="0"
-              placeholder="0"
-              class="w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              :class="formErrors.initialBalance ? 'border-red-500' : 'border-gray-300'"
-            />
-          </div>
-          <p v-if="formErrors.initialBalance" class="text-sm text-red-500 mt-1">
-            {{ formErrors.initialBalance }}
-          </p>
-        </div>
+        <CurrencyInput
+          v-model="form.initialBalance"
+          label="Saldo Awal"
+          placeholder="0"
+          :error="formErrors.initialBalance"
+        />
       </form>
       
       <template #footer>
