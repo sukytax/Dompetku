@@ -228,6 +228,4 @@ Aplikasi menyediakan fitur "Muat Data Contoh" di halaman Pengaturan untuk mencob
 
 Proyek ini dibuat untuk keperluan pembelajaran dan portfolio.
 
----
-
 **Selamat mencatat keuangan! 💰**
