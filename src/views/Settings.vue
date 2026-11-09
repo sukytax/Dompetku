@@ -469,6 +469,28 @@ async function handleLogout() {
         </button>
       </div>
 
+      <!-- Help & Guide -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Bantuan & Panduan
+        </h2>
+        <router-link
+          to="/cara-penggunaan"
+          class="w-full flex items-center justify-between p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+        >
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">❓</span>
+            <div class="text-left">
+              <p class="font-medium">Cara Penggunaan</p>
+              <p class="text-sm opacity-75">Panduan singkat penggunaan fitur aplikasi Dompetku</p>
+            </div>
+          </div>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </router-link>
+      </div>
+
       <!-- App Info -->
       <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
