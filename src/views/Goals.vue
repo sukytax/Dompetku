@@ -9,6 +9,7 @@ import Modal from '@/components/Modal.vue'
 import CurrencyInput from '@/components/CurrencyInput.vue'
 import ProgressBar from '@/components/ProgressBar.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import type { Goal } from '@/types'
 
 const router = useRouter()
 const goalsStore = useGoalsStore()
@@ -16,7 +17,7 @@ const toast = useToast()
 
 const showModal = ref(false)
 const editingId = ref<string | null>(null)
-const activeTab = ref<'active' | 'completed' | 'archived'>('active')
+const activeTab = ref<'goals' | 'archived'>('goals')
 
 const form = ref({
   name: '',
@@ -38,9 +39,30 @@ const availableColors = [
   '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'
 ]
 
-const filteredGoals = computed(() => {
-  if (activeTab.value === 'active') return goalsStore.activeGoals
-  if (activeTab.value === 'completed') return goalsStore.completedGoals
+function isGoalAchieved(goal: Goal): boolean {
+  if (goal.status === 'completed') return true
+  const saved = goalsStore.getGoalSavings(goal.id)
+  return saved >= goal.targetAmount
+}
+
+function getGoalRemaining(goalId: string, targetAmount: number): number {
+  const saved = goalsStore.getGoalSavings(goalId)
+  return Math.max(0, targetAmount - saved)
+}
+
+const nonArchivedGoals = computed(() => {
+  return goalsStore.goals.filter(g => g.status !== 'archived')
+})
+
+const ongoingGoals = computed(() => {
+  return nonArchivedGoals.value.filter(g => !isGoalAchieved(g))
+})
+
+const completedGoalsList = computed(() => {
+  return nonArchivedGoals.value.filter(g => isGoalAchieved(g))
+})
+
+const archivedGoalsList = computed(() => {
   return goalsStore.archivedGoals
 })
 
@@ -105,6 +127,7 @@ function handleSubmit() {
         color: form.value.color,
         note: form.value.note || undefined
       })
+      goalsStore.checkGoalCompletion(editingId.value)
       toast.success('Goal berhasil diperbarui')
     } else {
       goalsStore.addGoal({
@@ -131,6 +154,15 @@ function handleArchive(goalId: string) {
     goalsStore.updateGoal(goalId, { status: 'archived' })
     toast.success('Goal berhasil diarsipkan')
   }
+}
+
+function handleUnarchive(goalId: string) {
+  const goal = goalsStore.getGoalById(goalId)
+  if (!goal) return
+
+  goalsStore.updateGoal(goalId, { status: 'active' })
+  goalsStore.checkGoalCompletion(goalId)
+  toast.success('Goal berhasil diaktifkan kembali')
 }
 
 function handleDelete(goalId: string) {
@@ -162,125 +194,327 @@ function goToDetail(goalId: string) {
           </div>
           <button
             @click="openAddModal"
-            class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium shadow-sm cursor-pointer"
           >
             + Tambah Goal
           </button>
         </div>
 
-        <!-- Tabs -->
+        <!-- Tabs: Goals (Aktif & Tercapai) dan Arsip -->
         <div class="flex gap-4">
           <button
-            @click="activeTab = 'active'"
+            @click="activeTab = 'goals'"
             :class="[
-              'pb-2 px-1 font-medium border-b-2 transition-colors',
-              activeTab === 'active'
+              'pb-2 px-1 font-medium border-b-2 transition-colors flex items-center gap-2 cursor-pointer',
+              activeTab === 'goals'
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             ]"
           >
-            Aktif ({{ goalsStore.activeGoals.length }})
-          </button>
-          <button
-            @click="activeTab = 'completed'"
-            :class="[
-              'pb-2 px-1 font-medium border-b-2 transition-colors',
-              activeTab === 'completed'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-            ]"
-          >
-            Tercapai ({{ goalsStore.completedGoals.length }})
+            <span>Goals</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-semibold">
+              {{ nonArchivedGoals.length }}
+            </span>
           </button>
           <button
             @click="activeTab = 'archived'"
             :class="[
-              'pb-2 px-1 font-medium border-b-2 transition-colors',
+              'pb-2 px-1 font-medium border-b-2 transition-colors flex items-center gap-2 cursor-pointer',
               activeTab === 'archived'
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             ]"
           >
-            Arsip ({{ goalsStore.archivedGoals.length }})
+            <span>Arsip</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-semibold">
+              {{ archivedGoalsList.length }}
+            </span>
           </button>
         </div>
       </div>
     </div>
 
     <!-- Content -->
-    <div class="p-6 max-w-7xl mx-auto">
-      <div v-if="filteredGoals.length > 0" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div
-          v-for="goal in filteredGoals"
-          :key="goal.id"
-          class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-          @click="goToDetail(goal.id)"
-        >
-          <div class="flex items-start justify-between mb-4">
-            <div class="flex items-center gap-3">
+    <div class="p-6 max-w-7xl mx-auto space-y-8">
+      <!-- TAB GOALS -->
+      <template v-if="activeTab === 'goals'">
+        <div v-if="nonArchivedGoals.length > 0" class="space-y-8">
+          <!-- 1. Goals Sedang Berjalan -->
+          <div v-if="ongoingGoals.length > 0">
+            <div class="flex items-center gap-2 mb-4" v-if="completedGoalsList.length > 0">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <span>🎯</span> Sedang Berjalan
+              </h2>
+              <span class="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold">
+                {{ ongoingGoals.length }}
+              </span>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div
-                class="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
-                :style="{ backgroundColor: goal.color + '20' }"
+                v-for="goal in ongoingGoals"
+                :key="goal.id"
+                class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+                @click="goToDetail(goal.id)"
               >
-                {{ goal.icon }}
-              </div>
-              <div>
-                <h3 class="font-semibold text-gray-900 dark:text-white">
-                  {{ goal.name }}
-                </h3>
-                <p v-if="goal.deadline" class="text-xs text-gray-500 dark:text-gray-400">
-                  Target: {{ formatDate(goal.deadline, 'short') }}
-                </p>
+                <div>
+                  <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                      <div
+                        class="w-12 h-12 rounded-full flex items-center justify-center text-2xl shrink-0"
+                        :style="{ backgroundColor: goal.color + '20' }"
+                      >
+                        {{ goal.icon }}
+                      </div>
+                      <div>
+                        <h3 class="font-semibold text-gray-900 dark:text-white">
+                          {{ goal.name }}
+                        </h3>
+                        <p v-if="goal.deadline" class="text-xs text-gray-500 dark:text-gray-400">
+                          Target: {{ formatDate(goal.deadline, 'short') }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Details / Metrics -->
+                  <div class="space-y-2 mb-4">
+                    <div class="flex justify-between text-sm">
+                      <span class="text-gray-600 dark:text-gray-400">Terkumpul</span>
+                      <span class="font-medium text-gray-900 dark:text-white">
+                        {{ formatCurrency(goalsStore.getGoalSavings(goal.id)) }}
+                      </span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                      <span class="text-gray-600 dark:text-gray-400">Sisa yang harus dibayar</span>
+                      <span class="font-semibold text-amber-600 dark:text-amber-400">
+                        {{ formatCurrency(getGoalRemaining(goal.id, goal.targetAmount)) }}
+                      </span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                      <span class="text-gray-600 dark:text-gray-400">Target</span>
+                      <span class="font-medium text-gray-900 dark:text-white">
+                        {{ formatCurrency(goal.targetAmount) }}
+                      </span>
+                    </div>
+
+                    <div class="pt-1">
+                      <ProgressBar
+                        :percentage="goalsStore.getGoalProgress(goal.id)?.percentage || 0"
+                        :color="goal.color"
+                        :show-label="true"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex gap-2 pt-3 border-t border-gray-100 dark:border-gray-700/60" @click.stop>
+                  <button
+                    @click="openEditModal(goal.id)"
+                    class="flex-1 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    @click="handleArchive(goal.id)"
+                    class="flex-1 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                  >
+                    Arsipkan
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="mb-4">
-            <div class="flex justify-between text-sm mb-2">
-              <span class="text-gray-600 dark:text-gray-400">Terkumpul</span>
-              <span class="font-medium text-gray-900 dark:text-white">
-                {{ formatCurrency(goalsStore.getGoalSavings(goal.id)) }}
+          <!-- 2. Goals Sudah Tercapai (Ditaruh di Bawah, Berwarna Hijau) -->
+          <div v-if="completedGoalsList.length > 0">
+            <div class="flex items-center gap-2 mb-4 pt-2">
+              <h2 class="text-lg font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                <span>🎉</span> Sudah Tercapai
+              </h2>
+              <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold">
+                {{ completedGoalsList.length }}
               </span>
             </div>
-            <div class="flex justify-between text-sm mb-3">
-              <span class="text-gray-600 dark:text-gray-400">Target</span>
-              <span class="font-medium text-gray-900 dark:text-white">
-                {{ formatCurrency(goal.targetAmount) }}
-              </span>
-            </div>
-            <ProgressBar
-              :percentage="goalsStore.getGoalProgress(goal.id)?.percentage || 0"
-              :color="goal.color"
-              :show-label="true"
-            />
-          </div>
 
-          <div class="flex gap-2" @click.stop>
-            <button
-              @click="openEditModal(goal.id)"
-              class="flex-1 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              Edit
-            </button>
-            <button
-              v-if="goal.status === 'active'"
-              @click="handleArchive(goal.id)"
-              class="flex-1 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              Arsipkan
-            </button>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div
+                v-for="goal in completedGoalsList"
+                :key="goal.id"
+                class="bg-emerald-50/70 dark:bg-emerald-950/25 border-2 border-emerald-500/60 dark:border-emerald-500/40 rounded-xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer relative flex flex-col justify-between"
+                @click="goToDetail(goal.id)"
+              >
+                <div>
+                  <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-2xl shrink-0">
+                        {{ goal.icon }}
+                      </div>
+                      <div>
+                        <h3 class="font-semibold text-gray-900 dark:text-white">
+                          {{ goal.name }}
+                        </h3>
+                        <p v-if="goal.deadline" class="text-xs text-emerald-700/80 dark:text-emerald-400/80">
+                          Target: {{ formatDate(goal.deadline, 'short') }}
+                        </p>
+                      </div>
+                    </div>
+                    <!-- Badge Tercapai -->
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white flex items-center gap-1 shadow-sm shrink-0">
+                      ✓ Tercapai
+                    </span>
+                  </div>
+
+                  <!-- Details / Metrics -->
+                  <div class="space-y-2 mb-4">
+                    <div class="flex justify-between text-sm">
+                      <span class="text-gray-600 dark:text-gray-300">Terkumpul</span>
+                      <span class="font-bold text-emerald-700 dark:text-emerald-300">
+                        {{ formatCurrency(goalsStore.getGoalSavings(goal.id)) }}
+                      </span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                      <span class="text-gray-600 dark:text-gray-300">Sisa yang harus dibayar</span>
+                      <span class="font-bold text-emerald-600 dark:text-emerald-400">
+                        Rp 0 (Lunas 🎉)
+                      </span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                      <span class="text-gray-600 dark:text-gray-300">Target</span>
+                      <span class="font-medium text-gray-700 dark:text-gray-300">
+                        {{ formatCurrency(goal.targetAmount) }}
+                      </span>
+                    </div>
+
+                    <div class="pt-1">
+                      <ProgressBar
+                        :percentage="100"
+                        color="#10B981"
+                        :show-label="true"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex gap-2 pt-3 border-t border-emerald-200/60 dark:border-emerald-800/40" @click.stop>
+                  <button
+                    @click="openEditModal(goal.id)"
+                    class="flex-1 px-3 py-2 text-sm bg-white/80 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-white dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    @click="handleArchive(goal.id)"
+                    class="flex-1 px-3 py-2 text-sm bg-white/80 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-white dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  >
+                    Arsipkan
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <EmptyState
-        v-else
-        icon="🎯"
-        :title="`Belum Ada Goal ${activeTab === 'completed' ? 'Tercapai' : activeTab === 'archived' ? 'Diarsipkan' : ''}`"
-        :description="activeTab === 'active' ? 'Buat goal pertama Anda untuk mulai menabung' : 'Tidak ada goal di kategori ini'"
-        :action-text="activeTab === 'active' ? 'Tambah Goal' : undefined"
-        @action="openAddModal"
-      />
+        <EmptyState
+          v-else
+          icon="🎯"
+          title="Belum Ada Goal"
+          description="Buat goal pertama Anda untuk mulai menabung"
+          action-text="Tambah Goal"
+          @action="openAddModal"
+        />
+      </template>
+
+      <!-- TAB ARSIP -->
+      <template v-else-if="activeTab === 'archived'">
+        <div v-if="archivedGoalsList.length > 0" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div
+            v-for="goal in archivedGoalsList"
+            :key="goal.id"
+            class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer opacity-80 hover:opacity-100 flex flex-col justify-between"
+            @click="goToDetail(goal.id)"
+          >
+            <div>
+              <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-12 h-12 rounded-full flex items-center justify-center text-2xl shrink-0"
+                    :style="{ backgroundColor: goal.color + '20' }"
+                  >
+                    {{ goal.icon }}
+                  </div>
+                  <div>
+                    <h3 class="font-semibold text-gray-900 dark:text-white">
+                      {{ goal.name }}
+                    </h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      Diarsipkan
+                    </p>
+                  </div>
+                </div>
+                <span class="px-2 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium">
+                  Arsip
+                </span>
+              </div>
+
+              <!-- Details / Metrics -->
+              <div class="space-y-2 mb-4">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600 dark:text-gray-400">Terkumpul</span>
+                  <span class="font-medium text-gray-900 dark:text-white">
+                    {{ formatCurrency(goalsStore.getGoalSavings(goal.id)) }}
+                  </span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600 dark:text-gray-400">Sisa yang harus dibayar</span>
+                  <span
+                    class="font-semibold"
+                    :class="getGoalRemaining(goal.id, goal.targetAmount) > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'"
+                  >
+                    {{ getGoalRemaining(goal.id, goal.targetAmount) > 0 ? formatCurrency(getGoalRemaining(goal.id, goal.targetAmount)) : 'Rp 0 (Lunas)' }}
+                  </span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600 dark:text-gray-400">Target</span>
+                  <span class="font-medium text-gray-900 dark:text-white">
+                    {{ formatCurrency(goal.targetAmount) }}
+                  </span>
+                </div>
+
+                <div class="pt-1">
+                  <ProgressBar
+                    :percentage="goalsStore.getGoalProgress(goal.id)?.percentage || 0"
+                    :color="goal.color"
+                    :show-label="true"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="flex gap-2 pt-3 border-t border-gray-100 dark:border-gray-700/60" @click.stop>
+              <button
+                @click="handleUnarchive(goal.id)"
+                class="flex-1 px-3 py-2 text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
+              >
+                Aktifkan
+              </button>
+              <button
+                @click="handleDelete(goal.id)"
+                class="flex-1 px-3 py-2 text-sm bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <EmptyState
+          v-else
+          icon="📦"
+          title="Belum Ada Goal Diarsipkan"
+          description="Goal yang diarsipkan akan muncul di sini"
+        />
+      </template>
     </div>
 
     <!-- Modal Form -->
@@ -339,7 +573,7 @@ function goToDetail(goalId: string) {
               type="button"
               @click="form.icon = icon"
               :class="[
-                'w-12 h-12 text-2xl rounded-lg border-2 transition-all',
+                'w-12 h-12 text-2xl rounded-lg border-2 transition-all cursor-pointer',
                 form.icon === icon
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                   : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
@@ -362,7 +596,7 @@ function goToDetail(goalId: string) {
               type="button"
               @click="form.color = color"
               :class="[
-                'w-10 h-10 rounded-full border-2 transition-all',
+                'w-10 h-10 rounded-full border-2 transition-all cursor-pointer',
                 form.color === color
                   ? 'border-gray-900 dark:border-white scale-110'
                   : 'border-transparent'
@@ -391,21 +625,21 @@ function goToDetail(goalId: string) {
           v-if="editingId"
           type="button"
           @click="handleDelete(editingId); showModal = false"
-          class="mr-auto px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+          class="mr-auto px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors cursor-pointer"
         >
           Hapus
         </button>
         <button
           type="button"
           @click="showModal = false"
-          class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
         >
           Batal
         </button>
         <button
           type="button"
           @click="handleSubmit"
-          class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer"
         >
           {{ editingId ? 'Perbarui' : 'Simpan' }}
         </button>
